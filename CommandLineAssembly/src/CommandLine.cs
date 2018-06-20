@@ -130,6 +130,8 @@ public class CommandLine : MonoBehaviour {
 			case KMGameInfo.State.Gameplay:
 				StartCoroutine(CheckForBomb());
 				break;
+			case KMGameInfo.State.Transitioning:
+			case KMGameInfo.State.Quitting:
 			case KMGameInfo.State.PostGame:
 				StopCoroutine(CheckForBomb());
 				Bombs = null;
