@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using CommandLineAssembly;
+using System.Linq;
 
 public class CommandLine : MonoBehaviour {
 
@@ -16,7 +18,8 @@ public class CommandLine : MonoBehaviour {
 	private bool _wasAtBottom = true;
 	private bool BombActive = false;
 
-	private List<Bomb> Bombs = null;
+	private List<Bomb> Bombs = new List<Bomb> { };
+	private List<BombCommander> BombCommanders = new List<BombCommander> { };
 	#endregion
 
 	private void OnEnable()
@@ -95,14 +98,15 @@ public class CommandLine : MonoBehaviour {
 
 	private void ProcessCommand(string command)
 	{
-		command = command.Trim().ToLowerInvariant();
+		string commandTrimmed = command.Trim().ToLowerInvariant();
+		List<string> part = commandTrimmed.Split(new[] { ' ' }).ToList();
 
-		if (command == "exit")
+		if (commandTrimmed == "exit")
 		{
 			Overlay.gameObject.SetActive(!Overlay.gameObject.activeSelf);
 			InputField.text = string.Empty;
 		}
-		else if (command == "clear")
+		else if (commandTrimmed == "clear")
 		{
 			List<GameObject> children = new List<GameObject>();
 			foreach (Transform child in Content.transform)
@@ -112,15 +116,73 @@ public class CommandLine : MonoBehaviour {
 
 			children.ForEach(child => Destroy(child));
 		}
-		else if (command == "checkactive")
+		else if (commandTrimmed == "checkactive")
 		{
 			Log(BombActive ? $"Bomb active: number {Bombs.Count}." : "Bomb not detected.");
+			if (BombActive)
+			{
+				BombCommander heldBombCommander = GetHeldBomb();
+				Log($"Currently held Bomb: {(heldBombCommander != null ? $"ID: {heldBombCommander.Id}" : "None")}");
+			}
 			Debug.Log(Bombs);
+		}
+		else if (part[0] == "detonate")
+		{
+			if (BombActive)
+			{
+				BombCommander heldBombCommader = GetHeldBomb();
+				string reason = "Detonate Command";
+				if (part.Count > 1)
+					reason = command.Substring(9);
+				if (heldBombCommader != null)
+				{
+					Log($"Detonating{(part.Count > 1 ? $" with reason {command.Substring(9)}" : "")}");
+					heldBombCommader.Detonate(reason);
+				} else
+				{
+					Log("Please hold the bomb you wish to detonate");
+				}
+			} else
+			{
+				Log("Bomb not active, cannot detonate");
+			}
+		}
+		else if (part[0] == "causestrike")
+		{
+			if (BombActive)
+			{
+				BombCommander heldBombCommander = GetHeldBomb();
+				string reason = "Strike Command";
+				if (part.Count > 1)
+					reason = command.Substring(12);
+				if (heldBombCommander != null)
+				{
+					Log($"Causing strike{(part.Count > 1 ? $" with reason {command.Substring(12)}" : "")}");
+					heldBombCommander.CauseStrike(reason);
+				} else
+				{
+					Log("Please hold the bomb you wish to cause a strike on");
+				}
+			} else
+			{
+				Log("Bomb not active, cannot cause a strike");
+			}
 		}
 		else
 		{
 			Log("Command not valid.");
-		} 
+		}
+	}
+
+	private BombCommander GetHeldBomb()
+	{
+		BombCommander held = null;
+		foreach (BombCommander commander in BombCommanders)
+		{
+			if (commander.IsHeld())
+				held = commander;
+		}
+		return held;
 	}
 
 	private void StateChange(KMGameInfo.State state)
@@ -130,11 +192,12 @@ public class CommandLine : MonoBehaviour {
 			case KMGameInfo.State.Gameplay:
 				StartCoroutine(CheckForBomb());
 				break;
-			case KMGameInfo.State.Transitioning:
+			case KMGameInfo.State.Setup:
 			case KMGameInfo.State.Quitting:
 			case KMGameInfo.State.PostGame:
 				StopCoroutine(CheckForBomb());
-				Bombs = null;
+				Bombs.Clear();
+				BombCommanders.Clear();
 				BombActive = false;
 				break;
 		}
@@ -146,6 +209,12 @@ public class CommandLine : MonoBehaviour {
 		yield return new WaitUntil(() => (SceneManager.Instance.GameplayState.Bombs != null && SceneManager.Instance.GameplayState.Bombs.Count > 0));
 		Debug.Log("Bomb active");
 		Bombs = SceneManager.Instance.GameplayState.Bombs;
+		int i = 0;
+		foreach (Bomb bomb in Bombs)
+		{
+			BombCommanders.Add(new BombCommander(bomb, i));
+			i++;
+		}
 		BombActive = true;
 	}
 	
