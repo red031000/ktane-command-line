@@ -4,6 +4,9 @@ using UnityEngine;
 using UnityEngine.UI;
 using CommandLineAssembly;
 using System.Linq;
+using System;
+using Assets.Scripts.Records;
+using Assets.Scripts.Stats;
 
 public class CommandLine : MonoBehaviour {
 
@@ -137,6 +140,7 @@ public class CommandLine : MonoBehaviour {
 				if (heldBombCommader != null)
 				{
 					Log($"Detonating{(part.Count > 1 ? $" with reason {command.Substring(9)}" : "")}");
+					Debug.Log("[Command Line] Detonating bomb.");
 					heldBombCommader.Detonate(reason);
 				} else
 				{
@@ -158,6 +162,7 @@ public class CommandLine : MonoBehaviour {
 				if (heldBombCommander != null)
 				{
 					Log($"Causing strike{(part.Count > 1 ? $" with reason {command.Substring(12)}" : "")}");
+					Debug.Log("[Command Line] Causing strike.");
 					heldBombCommander.CauseStrike(reason);
 				} else
 				{
@@ -166,6 +171,81 @@ public class CommandLine : MonoBehaviour {
 			} else
 			{
 				Log("Bomb not active, cannot cause a strike");
+			}
+		}
+		else if (part[0].EqualsAny("time", "t") && part[1].EqualsAny("add", "increase", "change", "subtract", "decrease", "remove", "set"))
+		{
+			if (BombActive)
+			{
+				bool negative = part[1].EqualsAny("subtract", "decrease", "remove");
+				bool direct = part[1].EqualsAny("set");
+				BombCommander heldBombCommander = GetHeldBomb();
+				if (heldBombCommander != null)
+				{
+					float time = 0;
+					float originalTime = heldBombCommander.TimerComponent.TimeRemaining;
+					Dictionary<string, float> timeLengths = new Dictionary<string, float>()
+						{
+							{ "ms", 0.001f },
+							{ "s", 1 },
+							{ "m", 60 },
+							{ "h", 3600 },
+							{ "d", 86400 },
+							{ "w", 604800 },
+							{ "y", 31536000 },
+						};
+					foreach (string split in part.Skip(2))
+					{
+						bool valid = false;
+						foreach (string unit in timeLengths.Keys)
+						{
+							if (!split.EndsWith(unit) || !float.TryParse(split.Substring(0, split.Length - unit.Length), out float length)) continue;
+							time += length * timeLengths[unit];
+							valid = true;
+							break;
+						}
+
+						if (valid)
+						{
+							time = (float)Math.Round((decimal)time, 2, MidpointRounding.AwayFromZero);
+							if (!direct && Math.Abs(time) == 0) break;
+							if (negative) time = -time;
+
+							if (direct)
+								heldBombCommander.TimerComponent.TimeRemaining = time;
+							else
+								heldBombCommander.TimerComponent.TimeRemaining = heldBombCommander.CurrentTimer + time;
+
+							if (originalTime < heldBombCommander.TimerComponent.TimeRemaining)
+							{
+								ChangeLeaderboard(true);
+								Debug.Log("[Command Line] Disabling leaderboard.");
+							}
+
+							if (direct)
+							{
+								Log($"Setting the timer to {Math.Abs(time < 0 ? 0 : time).FormatTime()}.");
+								Debug.Log("[Command Line] Set bomb time.");
+							}
+							else
+							{
+								Log($"{(time > 0 ? "Added" : "Subtracted")} {Math.Abs(time).FormatTime()} {(time > 0 ? "to" : "from")} the timer.");
+								Debug.Log("[Command Line] Changed bomb time.");
+							}
+							break;
+						} else
+						{
+							Log("Time not valid");
+							break;
+						}
+					}
+				} else
+				{
+					Log("Please hold the bomb you wish to change the time on");
+				}
+			} else
+			{
+				Log("Bomb not active, cannot change time");
 			}
 		}
 		else
@@ -183,6 +263,15 @@ public class CommandLine : MonoBehaviour {
 				held = commander;
 		}
 		return held;
+	}
+
+	private static void ChangeLeaderboard(bool off)
+	{
+		if (RecordManager.Instance != null)
+			RecordManager.Instance.DisableBestRecords = off;
+
+		if (StatsManager.Instance != null)
+			StatsManager.Instance.DisableStatChanges = off;
 	}
 
 	private void StateChange(KMGameInfo.State state)

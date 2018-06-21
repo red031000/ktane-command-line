@@ -6,7 +6,7 @@ namespace CommandLineAssembly
 	public class BombCommander
 	{
 		public Bomb Bomb { get; private set; } = null;
-		public TimerComponent TimerComponent { get; private set; } = null;
+		public TimerComponent TimerComponent = null;
 		public WidgetManager WidgetManager { get; private set; } = null;
 		public Selectable Selectable { get; private set; } = null;
 		public FloatingHoldable FloatingHoldable { get; private set; } = null;
