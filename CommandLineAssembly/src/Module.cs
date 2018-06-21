@@ -21,15 +21,19 @@ namespace CommandLineAssembly
 			if (bombComponent.ComponentType != ComponentTypeEnum.Empty && BombComponent.ComponentType != ComponentTypeEnum.Timer)
 			{
 				selectable = BombComponent.GetComponent<Selectable>();
-				selectable.OnInteract += delegate
+				var OldOnInterract = selectable.OnInteract;
+				selectable.OnInteract = delegate
 				{
+					var result = OldOnInterract();
 					interacting = true;
-					return true;
+					return result;
 				};
+				var OldOnCancel = selectable.OnCancel;
 				selectable.OnCancel += delegate
 				{
+					var result = OldOnCancel();
 					interacting = false;
-					return true;
+					return result;
 				};
 				selectable.OnDeselect += delegate
 				{
