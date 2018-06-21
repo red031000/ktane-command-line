@@ -24,12 +24,12 @@ namespace CommandLineAssembly
 				selectable.OnInteract += delegate
 				{
 					interacting = true;
-					return false;
+					return true;
 				};
 				selectable.OnCancel += delegate
 				{
 					interacting = false;
-					return false;
+					return true;
 				};
 				selectable.OnDeselect += delegate
 				{

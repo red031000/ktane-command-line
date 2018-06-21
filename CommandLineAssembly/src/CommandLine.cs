@@ -356,14 +356,59 @@ public class CommandLine : MonoBehaviour {
 				Log("Bomb not active, cannot change strike limit");
 			} 
 		}
-		/*else if (commandTrimmed == "solve")
+		else if (commandTrimmed == "solve")
 		{
 			if (BombActive)
 			{
 				BombCommander heldBombCommander = GetHeldBomb();
 				if (heldBombCommander != null)
 				{
+					Module module = GetFocusedModule();
+					if (module != null)
+					{
+						switch (module.ComponentType)
+						{
+							case ComponentTypeEnum.NeedyCapacitor:
+							case ComponentTypeEnum.NeedyKnob:
+							case ComponentTypeEnum.NeedyMod:
+							case ComponentTypeEnum.NeedyVentGas:
+								Log("You cannot solve a needy module");
+								break;
 
+							case ComponentTypeEnum.Empty:
+								Log("You cannot solve an empty module slot!");
+								break;
+							case ComponentTypeEnum.Timer:
+								Log("You cannot solve the timer!");
+								break;
+
+							default:
+								if (module.IsKeyModule)
+								{
+									Log("Solving \"Key\" modules is not supported yet");
+									break;
+								}
+								ChangeLeaderboard(true);
+								Debug.Log("[Command Line] Disabling leaderboard.");
+								try
+								{
+									KMBombModule KMmodule = module.BombComponent.GetComponent<KMBombModule>();
+									CommonReflectedTypeInfo.HandlePassMethod.Invoke(module.BombComponent, null);
+									foreach (MonoBehaviour behavior in module.BombComponent.GetComponentsInChildren<MonoBehaviour>(true))
+									{
+										behavior.StopAllCoroutines();
+									}
+								}
+								catch (Exception ex)
+								{
+									Log($"Exception while force solving module: {ex}");
+								}
+								break;
+						}
+					} else
+					{
+						Log("Please focus on the module that you wish to solve");
+					}
 				} else
 				{
 					Log("Please hold the bomb that contains the module you wish to solve");
@@ -372,7 +417,7 @@ public class CommandLine : MonoBehaviour {
 			{
 				Log("Bomb not active, cannot solve a module");
 			}
-		}*/
+		}
 		else if (commandTrimmed == "help")
 		{
 			Log("Command reference:");
@@ -381,6 +426,7 @@ public class CommandLine : MonoBehaviour {
 			Log("\"Time (set|add|subtract) (time)\" - changes the time on the currently held bomb (NOTE: this will disable leaderboards if you use it to achieve a faster time)");
 			Log("\"Strikes (set|add|subtract) (number)\" - changes the strikes on the currently held bomb (NOTE: this will disable leaderboards if you use it to achieve a faster time)");
 			Log("\"StrikeLimit (set|add|subtract) (number)\" - changes the strike limit on the currently held bomb (NOTE: this will disable leaderboards if you add a higher strike limit)");
+			Log("\"Solve\" - solves the currently focused module (NOTE: this will disable leaderboards)");
 		}
 		else
 		{
