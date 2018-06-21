@@ -7,6 +7,7 @@ using System.Linq;
 using System;
 using Assets.Scripts.Records;
 using Assets.Scripts.Stats;
+using Assets.Scripts.Missions;
 
 public class CommandLine : MonoBehaviour {
 
@@ -20,10 +21,16 @@ public class CommandLine : MonoBehaviour {
 	private bool _enabled = false;
 	private bool _wasAtBottom = true;
 	private bool BombActive = false;
+#if DEBUG
+	private readonly bool _isDebug = true;
+#else
+	private readonly bool _isDebug = false;
+#endif
 
 	private List<Bomb> Bombs = new List<Bomb> { };
 	private List<BombCommander> BombCommanders = new List<BombCommander> { };
-	#endregion
+	private List<Module> Modules = new List<Module> { };
+#endregion
 
 	private void OnEnable()
 	{ 
@@ -115,15 +122,16 @@ public class CommandLine : MonoBehaviour {
 
 			children.ForEach(child => Destroy(child));
 		}
-		else if (commandTrimmed == "checkactive")
+		else if (commandTrimmed == "checkactive" && _isDebug)
 		{
 			Log(BombActive ? $"Bomb active: number {Bombs.Count}." : "Bomb not detected.");
 			if (BombActive)
 			{
 				BombCommander heldBombCommander = GetHeldBomb();
 				Log($"Currently held Bomb: {(heldBombCommander != null ? $"ID: {heldBombCommander.Id}" : "None")}");
+				Module focusedModule = GetFocusedModule();
+				Log($"Currently focused Module: {(focusedModule != null ? $"Name: {focusedModule.ModuleName}" : "None")}");
 			}
-			Debug.Log(Bombs);
 		}
 		else if (part[0] == "detonate")
 		{
@@ -346,7 +354,33 @@ public class CommandLine : MonoBehaviour {
 			} else
 			{
 				Log("Bomb not active, cannot change strike limit");
+			} 
+		}
+		/*else if (commandTrimmed == "solve")
+		{
+			if (BombActive)
+			{
+				BombCommander heldBombCommander = GetHeldBomb();
+				if (heldBombCommander != null)
+				{
+
+				} else
+				{
+					Log("Please hold the bomb that contains the module you wish to solve");
+				}
+			} else
+			{
+				Log("Bomb not active, cannot solve a module");
 			}
+		}*/
+		else if (commandTrimmed == "help")
+		{
+			Log("Command reference:");
+			Log("\"Detonate [reason]\" - detonate the currently held bomb, with an optional reason");
+			Log("\"CauseStrike [reason]\" - cause a strike on the currently held bomb, with an optional reason");
+			Log("\"Time (set|add|subtract) (time)\" - changes the time on the currently held bomb (NOTE: this will disable leaderboards if you use it to achieve a faster time)");
+			Log("\"Strikes (set|add|subtract) (number)\" - changes the strikes on the currently held bomb (NOTE: this will disable leaderboards if you use it to achieve a faster time)");
+			Log("\"StrikeLimit (set|add|subtract) (number)\" - changes the strike limit on the currently held bomb (NOTE: this will disable leaderboards if you add a higher strike limit)");
 		}
 		else
 		{
@@ -363,6 +397,17 @@ public class CommandLine : MonoBehaviour {
 				held = commander;
 		}
 		return held;
+	}
+	
+	private Module GetFocusedModule()
+	{
+		Module focused = null;
+		foreach (Module module in Modules)
+		{
+			if (module.IsHeld())
+				focused = module;
+		}
+		return focused;
 	}
 
 	private static void ChangeLeaderboard(bool off)
@@ -390,7 +435,6 @@ public class CommandLine : MonoBehaviour {
 				BombActive = false;
 				break;
 		}
-
 	}
 	
 	private IEnumerator CheckForBomb()
@@ -398,9 +442,51 @@ public class CommandLine : MonoBehaviour {
 		yield return new WaitUntil(() => (SceneManager.Instance.GameplayState.Bombs != null && SceneManager.Instance.GameplayState.Bombs.Count > 0));
 		Bombs = SceneManager.Instance.GameplayState.Bombs;
 		int i = 0;
+		string[] keyModules =
+		{
+			"SouvenirModule", "MemoryV2", "TurnTheKey", "TurnTheKeyAdvanced", "theSwan", "HexiEvilFMN", "taxReturns"
+		};
 		foreach (Bomb bomb in Bombs)
 		{
 			BombCommanders.Add(new BombCommander(bomb, i));
+			foreach (BombComponent bombComponent in bomb.BombComponents)
+			{
+				ComponentTypeEnum componentType = bombComponent.ComponentType;
+				bool keyModule = false;
+				string moduleName = "";
+
+				switch (componentType)
+				{
+					case ComponentTypeEnum.Empty:
+					case ComponentTypeEnum.Timer:
+						continue;
+
+					case ComponentTypeEnum.NeedyCapacitor:
+					case ComponentTypeEnum.NeedyKnob:
+					case ComponentTypeEnum.NeedyVentGas:
+					case ComponentTypeEnum.NeedyMod:
+						moduleName = bombComponent.GetModuleDisplayName();
+						keyModule = true;
+						break;
+
+					case ComponentTypeEnum.Mod:
+						KMBombModule KMModule = bombComponent.GetComponent<KMBombModule>();
+						keyModule = keyModules.Contains(KMModule.ModuleType);
+						goto default;
+
+					default:
+						moduleName = bombComponent.GetModuleDisplayName();
+						break;
+				}
+				Module module = new Module(bombComponent)
+				{
+					ComponentType = componentType,
+					IsKeyModule = keyModule,
+					ModuleName = moduleName
+				};
+
+				Modules.Add(module);
+			}
 			i++;
 		}
 		BombActive = true;
