@@ -1,5 +1,7 @@
 ﻿using Assets.Scripts.Missions;
 using Assets.Scripts.Records;
+using System;
+using UnityEngine;
 
 namespace CommandLineAssembly
 {
@@ -18,10 +20,17 @@ namespace CommandLineAssembly
 		public int StrikeLimit
 		{
 			get => Bomb.NumStrikesToLose;
+			set { Bomb.NumStrikesToLose = value; HandleStrikeChanges(); }
 		}
 		public int StrikeCount
 		{
 			get => Bomb.NumStrikes;
+			set
+			{
+				if (value < 0) value = 0;
+				Bomb.NumStrikes = value;
+				HandleStrikeChanges();
+			}
 		}
 		public float CurrentTimerElapsed => TimerComponent.TimeElapsed;
 		public readonly int Id;
@@ -63,6 +72,42 @@ namespace CommandLineAssembly
 			recordManager.RecordStrike(strikeSource);
 
 			Bomb.OnStrike(null);
+		}
+
+		private void HandleStrikeChanges()
+		{
+			int strikeLimit = StrikeLimit;
+			int strikeCount = Math.Min(StrikeCount, StrikeLimit);
+
+			RecordManager RecordManager = RecordManager.Instance;
+			GameRecord GameRecord = RecordManager.GetCurrentRecord();
+			StrikeSource[] Strikes = GameRecord.Strikes;
+			if (Strikes.Length != strikeLimit)
+			{
+				StrikeSource[] newStrikes = new StrikeSource[Math.Max(strikeLimit, 1)];
+				Array.Copy(Strikes, newStrikes, Math.Min(Strikes.Length, newStrikes.Length));
+				GameRecord.Strikes = newStrikes;
+			}
+
+			if (strikeCount == strikeLimit)
+			{
+				if (strikeLimit < 1)
+				{
+					Bomb.NumStrikesToLose = 1;
+					strikeLimit = 1;
+				}
+				Bomb.NumStrikes = strikeLimit - 1;
+				CommonReflectedTypeInfo.GameRecordCurrentStrikeIndexField.SetValue(GameRecord, strikeLimit - 1);
+				CauseStrike("Strike count / limit changed");
+			}
+			else
+			{
+				Debug.Log(string.Format("[Bomb] Strike from CommandLine! {0} / {1} strikes", StrikeCount, StrikeLimit));
+				CommonReflectedTypeInfo.GameRecordCurrentStrikeIndexField.SetValue(GameRecord, strikeCount);
+				float[] rates = { 1, 1.25f, 1.5f, 1.75f, 2 };
+				TimerComponent.SetRateModifier(rates[Math.Min(strikeCount, 4)]);
+				Bomb.StrikeIndicator.StrikeCount = strikeCount;
+			}
 		}
 	}
 }

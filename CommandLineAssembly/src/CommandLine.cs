@@ -28,7 +28,6 @@ public class CommandLine : MonoBehaviour {
 	private void OnEnable()
 	{ 
 		_enabled = true;
-		Debug.Log("enabled");
 		GameInfo = GetComponent<KMGameInfo>();
 		GameInfo.OnStateChange += delegate (KMGameInfo.State state)
 		{
@@ -51,7 +50,6 @@ public class CommandLine : MonoBehaviour {
 		_enabled = false;
 		if (Overlay.gameObject.activeSelf)
 			Overlay.gameObject.SetActive(false);
-		Debug.Log("disabled");
 		GameInfo.OnStateChange -= delegate (KMGameInfo.State state)
 		{
 			StateChange(state);
@@ -65,7 +63,6 @@ public class CommandLine : MonoBehaviour {
 			if (Input.GetKeyDown(KeyCode.Backslash))
 			{
 				Overlay.gameObject.SetActive(!Overlay.gameObject.activeSelf);
-				Debug.Log("activate/deactivate");
 				if (Overlay.gameObject.activeSelf)
 				{
 					InputField.ActivateInputField();
@@ -78,7 +75,6 @@ public class CommandLine : MonoBehaviour {
 				Log(">" + InputField.text);
 				ProcessCommand(InputField.text);
 				InputField.text = string.Empty;
-				Debug.Log("clear");
 				InputField.ActivateInputField();
 			}
 		}
@@ -224,12 +220,12 @@ public class CommandLine : MonoBehaviour {
 
 							if (direct)
 							{
-								Log($"Setting the timer to {Math.Abs(time < 0 ? 0 : time).FormatTime()}.");
+								Log($"Setting the timer to {Math.Abs(time < 0 ? 0 : time).FormatTime()}");
 								Debug.Log("[Command Line] Set bomb time.");
 							}
 							else
 							{
-								Log($"{(time > 0 ? "Added" : "Subtracted")} {Math.Abs(time).FormatTime()} {(time > 0 ? "to" : "from")} the timer.");
+								Log($"{(time > 0 ? "Added" : "Subtracted")} {Math.Abs(time).FormatTime()} {(time > 0 ? "to" : "from")} the timer");
 								Debug.Log("[Command Line] Changed bomb time.");
 							}
 							break;
@@ -248,9 +244,113 @@ public class CommandLine : MonoBehaviour {
 				Log("Bomb not active, cannot change time");
 			}
 		}
+		else if (part[0].EqualsAny("strikes", "strike", "s") && part[1].EqualsAny("add", "increase", "change", "subtract", "decrease", "remove", "set"))
+		{
+			if (BombActive)
+			{
+				BombCommander heldBombCommander = GetHeldBomb();
+				if (heldBombCommander != null)
+				{
+					bool negative = part[1].EqualsAny("subtract", "decrease", "remove");
+					bool direct = part[1].EqualsAny("set");
+					if (int.TryParse(part[2], out int strikes) && (strikes != 0 || direct))
+					{
+						int originalStrikes = heldBombCommander.StrikeCount;
+						if (negative) strikes = -strikes;
+
+						if (direct && strikes < 0)
+						{
+							strikes = 0;
+						}
+						else if (!direct && (heldBombCommander.StrikeCount + strikes) < 0)
+						{
+							strikes = -heldBombCommander.StrikeCount;
+						}
+
+						if (direct)
+							heldBombCommander.StrikeCount = strikes;
+						else
+							heldBombCommander.StrikeCount += strikes;
+
+						if (heldBombCommander.StrikeCount < originalStrikes)
+						{
+							ChangeLeaderboard(true);
+							Debug.Log("[Command Line] Disabling leaderboard.");
+						}
+
+						if (direct)
+						{
+							Log($"Setting the strike count to {Math.Abs(strikes)} {(Math.Abs(strikes) != 1 ? "strikes" : "strike")}");
+							Debug.Log("[Command Line] Set bomb strike count.");
+						}
+						else
+						{
+							Log($"{(strikes > 0 ? "Added" : "Subtracted")} {Math.Abs(strikes)} {(Math.Abs(strikes) != 1 ? "strikes" : "strike")} {(strikes > 0 ? "to" : "from")} the bomb");
+							Debug.Log("[Command Line] Changed bomb strike count.");
+						}
+					}
+				} else
+				{
+					Log("Please hold the bomb you wish to change the strikes on");
+				}
+			} else
+			{
+				Log("Bomb not active, cannot change strikes");
+			}
+		}
+		else if (part[0].EqualsAny("ms", "maxstrikes", "sl", "strikelimit") && part[1].EqualsAny("add", "increase", "change", "subtract", "decrease", "remove", "set"))
+		{
+			if (BombActive)
+			{
+				BombCommander heldBombCommander = GetHeldBomb();
+				if (heldBombCommander != null)
+				{
+					bool negative = part[1].EqualsAny("subtract", "decrease", "remove");
+					bool direct = part[1].EqualsAny("set");
+					if (int.TryParse(part[2], out int maxStrikes) && (maxStrikes != 0 || direct))
+					{
+						int originalStrikeLimit = heldBombCommander.StrikeLimit;
+						if (negative) maxStrikes = -maxStrikes;
+
+						if (direct && maxStrikes < 0)
+							maxStrikes = 0;
+						else if (!direct && (heldBombCommander.StrikeLimit + maxStrikes) < 0)
+							maxStrikes = -heldBombCommander.StrikeLimit;
+
+						if (direct)
+							heldBombCommander.StrikeLimit = maxStrikes;
+						else
+							heldBombCommander.StrikeLimit += maxStrikes;
+
+						if (originalStrikeLimit < heldBombCommander.StrikeLimit)
+						{
+							ChangeLeaderboard(true);
+							Debug.Log("[Command Line] Disabling leaderboard.");
+						}
+
+						if (direct)
+						{
+							Log($"Setting the strike limit to {Math.Abs(maxStrikes)} {(Math.Abs(maxStrikes) != 1 ? "strikes" : "strike")}");
+							Debug.Log("[Command Line] Set bomb strike limit.");
+						}
+						else
+						{
+							Log($"{(maxStrikes > 0 ? "Added" : "Subtracted")} {Math.Abs(maxStrikes)} {(Math.Abs(maxStrikes) > 1 ? "strikes" : "strike")} {(maxStrikes > 0 ? "to" : "from")} the strike limit");
+							Debug.Log("[Command Line] Changed bomb strike limit.");
+						}
+					}
+				} else
+				{
+					Log("Please hold the bomb you wish to change the strike limit on");
+				}
+			} else
+			{
+				Log("Bomb not active, cannot change strike limit");
+			}
+		}
 		else
 		{
-			Log("Command not valid.");
+			Log("Command not valid");
 		}
 	}
 
@@ -296,7 +396,6 @@ public class CommandLine : MonoBehaviour {
 	private IEnumerator CheckForBomb()
 	{
 		yield return new WaitUntil(() => (SceneManager.Instance.GameplayState.Bombs != null && SceneManager.Instance.GameplayState.Bombs.Count > 0));
-		Debug.Log("Bomb active");
 		Bombs = SceneManager.Instance.GameplayState.Bombs;
 		int i = 0;
 		foreach (Bomb bomb in Bombs)
