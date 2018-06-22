@@ -30,6 +30,7 @@ public class CommandLine : MonoBehaviour {
 	private List<Bomb> Bombs = new List<Bomb> { };
 	private List<BombCommander> BombCommanders = new List<BombCommander> { };
 	private List<Module> Modules = new List<Module> { };
+	private static bool Leaderboardoff = false;
 #endregion
 
 	private void OnEnable()
@@ -86,6 +87,13 @@ public class CommandLine : MonoBehaviour {
 			}
 		}
 		_wasAtBottom = ScrollRect.verticalNormalizedPosition <= 0.001f;
+		if (BombActive)
+		{
+			foreach (Module module in Modules)
+			{
+				module.Update();
+			}
+		}
 	}
 
 	private void Log(string text)
@@ -220,7 +228,7 @@ public class CommandLine : MonoBehaviour {
 							else
 								heldBombCommander.TimerComponent.TimeRemaining = heldBombCommander.CurrentTimer + time;
 
-							if (originalTime < heldBombCommander.TimerComponent.TimeRemaining)
+							if (originalTime < heldBombCommander.TimerComponent.TimeRemaining && !Leaderboardoff)
 							{
 								ChangeLeaderboard(true);
 								Debug.Log("[Command Line] Disabling leaderboard.");
@@ -280,7 +288,7 @@ public class CommandLine : MonoBehaviour {
 						else
 							heldBombCommander.StrikeCount += strikes;
 
-						if (heldBombCommander.StrikeCount < originalStrikes)
+						if (heldBombCommander.StrikeCount < originalStrikes && !Leaderboardoff)
 						{
 							ChangeLeaderboard(true);
 							Debug.Log("[Command Line] Disabling leaderboard.");
@@ -330,7 +338,7 @@ public class CommandLine : MonoBehaviour {
 						else
 							heldBombCommander.StrikeLimit += maxStrikes;
 
-						if (originalStrikeLimit < heldBombCommander.StrikeLimit)
+						if (originalStrikeLimit < heldBombCommander.StrikeLimit && !Leaderboardoff)
 						{
 							ChangeLeaderboard(true);
 							Debug.Log("[Command Line] Disabling leaderboard.");
@@ -366,44 +374,33 @@ public class CommandLine : MonoBehaviour {
 					Module module = GetFocusedModule();
 					if (module != null)
 					{
-						switch (module.ComponentType)
+						if (!module.IsSolved)
 						{
-							case ComponentTypeEnum.NeedyCapacitor:
-							case ComponentTypeEnum.NeedyKnob:
-							case ComponentTypeEnum.NeedyMod:
-							case ComponentTypeEnum.NeedyVentGas:
-								Log("You cannot solve a needy module");
-								break;
-
-							case ComponentTypeEnum.Empty:
-								Log("You cannot solve an empty module slot!");
-								break;
-							case ComponentTypeEnum.Timer:
-								Log("You cannot solve the timer!");
-								break;
-
-							default:
-								if (module.IsKeyModule)
-								{
-									Log("Solving \"Key\" modules is not supported yet");
+							switch (module.ComponentType)
+							{
+								case ComponentTypeEnum.NeedyCapacitor:
+								case ComponentTypeEnum.NeedyKnob:
+								case ComponentTypeEnum.NeedyMod:
+								case ComponentTypeEnum.NeedyVentGas:
+									Log("You cannot solve a needy module");
 									break;
-								}
-								ChangeLeaderboard(true);
-								Debug.Log("[Command Line] Disabling leaderboard.");
-								try
-								{
-									KMBombModule KMmodule = module.BombComponent.GetComponent<KMBombModule>();
-									CommonReflectedTypeInfo.HandlePassMethod.Invoke(module.BombComponent, null);
-									foreach (MonoBehaviour behavior in module.BombComponent.GetComponentsInChildren<MonoBehaviour>(true))
-									{
-										behavior.StopAllCoroutines();
-									}
-								}
-								catch (Exception ex)
-								{
-									Log($"Exception while force solving module: {ex}");
-								}
-								break;
+
+								case ComponentTypeEnum.Empty:
+									Log("You cannot solve an empty module slot!");
+									break;
+								case ComponentTypeEnum.Timer:
+									Log("You cannot solve the timer!");
+									break;
+
+								default:
+									SolveModule(module);
+									Log($"Solving module: {module.ModuleName}");
+									Debug.Log($"[Command Line] Solved module: {module.ModuleName}");
+									break;
+							}
+						} else
+						{
+							Log("You cannot solve a module that's already been solved");
 						}
 					} else
 					{
@@ -418,6 +415,31 @@ public class CommandLine : MonoBehaviour {
 				Log("Bomb not active, cannot solve a module");
 			}
 		}
+		else if (commandTrimmed == "solvebomb")
+		{
+			if (BombActive)
+			{
+				BombCommander heldBombCommander = GetHeldBomb();
+				if (heldBombCommander != null)
+				{
+					if (!Leaderboardoff)
+					{
+						ChangeLeaderboard(true);
+						Debug.Log("[Command Line] Disabling leaderboard.");
+					}
+					foreach (Module module in Modules.Where(x => x.BombId == heldBombCommander.Id && x.IsSolvable && x.ComponentType != ComponentTypeEnum.Empty && x.ComponentType != ComponentTypeEnum.Timer))
+					{
+						if (!module.IsSolved) SolveModule(module);
+					}
+				} else
+				{
+					Log("Please hold the bomb that you wish to solve");
+				}
+			} else
+			{
+				Log("Bomb not active, cannot solve a bomb");
+			}
+		}
 		else if (commandTrimmed == "help")
 		{
 			Log("Command reference:");
@@ -427,6 +449,7 @@ public class CommandLine : MonoBehaviour {
 			Log("\"Strikes (set|add|subtract) (number)\" - changes the strikes on the currently held bomb (NOTE: this will disable leaderboards if you use it to achieve a faster time)");
 			Log("\"StrikeLimit (set|add|subtract) (number)\" - changes the strike limit on the currently held bomb (NOTE: this will disable leaderboards if you add a higher strike limit)");
 			Log("\"Solve\" - solves the currently focused module (NOTE: this will disable leaderboards)");
+			Log("\"SolveBomb\" - solves the currently held bomb (NOTE: this will disable leaderboards)");
 		}
 		else
 		{
@@ -463,6 +486,30 @@ public class CommandLine : MonoBehaviour {
 
 		if (StatsManager.Instance != null)
 			StatsManager.Instance.DisableStatChanges = off;
+
+		Leaderboardoff = off;
+	}
+
+	private void SolveModule(Module module)
+	{
+		if (!Leaderboardoff)
+		{
+			ChangeLeaderboard(true);
+			Debug.Log("[Command Line] Disabling leaderboard.");
+		}
+		try
+		{
+			KMBombModule KMmodule = module.BombComponent.GetComponent<KMBombModule>();
+			CommonReflectedTypeInfo.HandlePassMethod.Invoke(module.BombComponent, null);
+			foreach (MonoBehaviour behavior in module.BombComponent.GetComponentsInChildren<MonoBehaviour>(true))
+			{
+				behavior.StopAllCoroutines();
+			}
+		}
+		catch (Exception ex)
+		{
+			Log($"Exception while force solving module: {ex}");
+		}
 	}
 
 	private void StateChange(KMGameInfo.State state)
@@ -475,10 +522,12 @@ public class CommandLine : MonoBehaviour {
 			case KMGameInfo.State.Setup:
 			case KMGameInfo.State.Quitting:
 			case KMGameInfo.State.PostGame:
+				BombActive = false;
 				StopCoroutine(CheckForBomb());
 				Bombs.Clear();
+				Modules.Clear();
 				BombCommanders.Clear();
-				BombActive = false;
+				ChangeLeaderboard(false);
 				break;
 		}
 	}
@@ -524,7 +573,7 @@ public class CommandLine : MonoBehaviour {
 						moduleName = bombComponent.GetModuleDisplayName();
 						break;
 				}
-				Module module = new Module(bombComponent)
+				Module module = new Module(bombComponent, i)
 				{
 					ComponentType = componentType,
 					IsKeyModule = keyModule,

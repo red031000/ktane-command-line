@@ -1,10 +1,12 @@
 ﻿using Assets.Scripts.Missions;
+using UnityEngine;
 
 namespace CommandLineAssembly
 {
 	public class Module
 	{
 		public BombComponent BombComponent { get; private set; }
+		public int BombId { get; private set; }
 		public string ModuleName;
 		public Selectable selectable;
 		public bool IsKeyModule = false;
@@ -14,31 +16,32 @@ namespace CommandLineAssembly
 		public ComponentTypeEnum ComponentType;
 
 		public bool IsSolved => BombComponent.IsSolved;
-		
-		public Module(BombComponent bombComponent)
+
+		public bool IsSolvable => BombComponent.IsSolvable;
+
+		public Module(BombComponent bombComponent, int bombId)
 		{
 			BombComponent = bombComponent;
+			BombId = bombId;
 			if (bombComponent.ComponentType != ComponentTypeEnum.Empty && BombComponent.ComponentType != ComponentTypeEnum.Timer)
 			{
-				selectable = BombComponent.GetComponent<Selectable>();
-				var OldOnInterract = selectable.OnInteract;
-				selectable.OnInteract = delegate
+				selectable = bombComponent.GetComponent<Selectable>();
+			}
+		}
+
+		public void Update()
+		{
+			if (selectable != null)
+			{
+				if (KTInputManager.Instance?.SelectableManager?.GetCurrentParent().GetComponentInParent<BombComponent>() != null)
 				{
-					var result = OldOnInterract();
-					interacting = true;
-					return result;
-				};
-				var OldOnCancel = selectable.OnCancel;
-				selectable.OnCancel += delegate
-				{
-					var result = OldOnCancel();
+					if (KTInputManager.Instance.SelectableManager.GetCurrentParent().GetComponentInParent<BombComponent>() == BombComponent)
+						interacting = true;
+					else
+						interacting = false;
+				}
+				else
 					interacting = false;
-					return result;
-				};
-				selectable.OnDeselect += delegate
-				{
-					interacting = false;
-				};
 			}
 		}
 
