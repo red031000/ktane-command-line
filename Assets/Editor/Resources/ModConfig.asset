@@ -12,8 +12,20 @@ MonoBehaviour:
   m_Name: ModConfig
   m_EditorClassIdentifier: 
   id: CommandLine
-  title: Command Line Mod
-  description: 
+  title: Command Line
+  description: 'Command Line service for KTaNE
+
+
+    Use the \ key to open the console
+
+
+    All commands are listed under the help command
+
+
+    Concept and Programming by red031000
+
+
+    Special thanks to ashthebash'
   version: 1.0
   outputFolder: build
-  previewImage: {fileID: 0}
+  previewImage: {fileID: 2800000, guid: ceb0a7a3a1ffc5a43a90edab2b4e41ef, type: 3}
