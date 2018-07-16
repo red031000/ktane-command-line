@@ -9,7 +9,8 @@ using Assets.Scripts.Records;
 using Assets.Scripts.Stats;
 using Assets.Scripts.Missions;
 
-public class CommandLine : MonoBehaviour {
+public class CommandLine : MonoBehaviour
+{
 
 	#region Global Variables
 	public Text TextPrefab = null;
@@ -31,10 +32,10 @@ public class CommandLine : MonoBehaviour {
 	private List<BombCommander> BombCommanders = new List<BombCommander> { };
 	private List<Module> Modules = new List<Module> { };
 	private static bool Leaderboardoff = false;
-#endregion
+	#endregion
 
 	private void OnEnable()
-	{ 
+	{
 		_enabled = true;
 		GameInfo = GetComponent<KMGameInfo>();
 		GameInfo.OnStateChange += delegate (KMGameInfo.State state)
@@ -65,7 +66,8 @@ public class CommandLine : MonoBehaviour {
 		StopAllCoroutines();
 	}
 
-	private void Update() {
+	private void Update()
+	{
 		if (_enabled)
 		{
 			if (Input.GetKeyDown(KeyCode.Backslash))
@@ -85,15 +87,15 @@ public class CommandLine : MonoBehaviour {
 				InputField.text = string.Empty;
 				InputField.ActivateInputField();
 			}
-		}
-		_wasAtBottom = ScrollRect.verticalNormalizedPosition <= 0.001f;
-		if (BombActive)
-		{
-			foreach (Module module in Modules)
+			if (BombActive)
 			{
-				module.Update();
+				foreach (Module module in Modules)
+				{
+					module.Update();
+				}
 			}
 		}
+		_wasAtBottom = ScrollRect.verticalNormalizedPosition <= 0.001f;
 	}
 
 	private void Log(string text)
@@ -154,11 +156,13 @@ public class CommandLine : MonoBehaviour {
 					Log($"Detonating{(part.Count > 1 ? $" with reason {command.Substring(9)}" : "")}");
 					Debug.Log("[Command Line] Detonating bomb.");
 					heldBombCommader.Detonate(reason);
-				} else
+				}
+				else
 				{
 					Log("Please hold the bomb you wish to detonate");
 				}
-			} else
+			}
+			else
 			{
 				Log("Bomb not active, cannot detonate");
 			}
@@ -176,11 +180,13 @@ public class CommandLine : MonoBehaviour {
 					Log($"Causing strike{(part.Count > 1 ? $" with reason {command.Substring(12)}" : "")}");
 					Debug.Log("[Command Line] Causing strike.");
 					heldBombCommander.CauseStrike(reason);
-				} else
+				}
+				else
 				{
 					Log("Please hold the bomb you wish to cause a strike on");
 				}
-			} else
+			}
+			else
 			{
 				Log("Bomb not active, cannot cause a strike");
 			}
@@ -245,17 +251,20 @@ public class CommandLine : MonoBehaviour {
 								Debug.Log("[Command Line] Changed bomb time.");
 							}
 							break;
-						} else
+						}
+						else
 						{
 							Log("Time not valid");
 							break;
 						}
 					}
-				} else
+				}
+				else
 				{
 					Log("Please hold the bomb you wish to change the time on");
 				}
-			} else
+			}
+			else
 			{
 				Log("Bomb not active, cannot change time");
 			}
@@ -305,11 +314,13 @@ public class CommandLine : MonoBehaviour {
 							Debug.Log("[Command Line] Changed bomb strike count.");
 						}
 					}
-				} else
+				}
+				else
 				{
 					Log("Please hold the bomb you wish to change the strikes on");
 				}
-			} else
+			}
+			else
 			{
 				Log("Bomb not active, cannot change strikes");
 			}
@@ -355,14 +366,16 @@ public class CommandLine : MonoBehaviour {
 							Debug.Log("[Command Line] Changed bomb strike limit.");
 						}
 					}
-				} else
+				}
+				else
 				{
 					Log("Please hold the bomb you wish to change the strike limit on");
 				}
-			} else
+			}
+			else
 			{
 				Log("Bomb not active, cannot change strike limit");
-			} 
+			}
 		}
 		else if (commandTrimmed == "solve")
 		{
@@ -398,19 +411,23 @@ public class CommandLine : MonoBehaviour {
 									Debug.Log($"[Command Line] Solved module: {module.ModuleName}");
 									break;
 							}
-						} else
+						}
+						else
 						{
 							Log("You cannot solve a module that's already been solved");
 						}
-					} else
+					}
+					else
 					{
 						Log("Please focus on the module that you wish to solve");
 					}
-				} else
+				}
+				else
 				{
 					Log("Please hold the bomb that contains the module you wish to solve");
 				}
-			} else
+			}
+			else
 			{
 				Log("Bomb not active, cannot solve a module");
 			}
@@ -431,13 +448,93 @@ public class CommandLine : MonoBehaviour {
 					{
 						if (!module.IsSolved) SolveModule(module);
 					}
-				} else
+				}
+				else
 				{
 					Log("Please hold the bomb that you wish to solve");
 				}
-			} else
+			}
+			else
 			{
 				Log("Bomb not active, cannot solve a bomb");
+			}
+		}
+		else if (commandTrimmed == "pause")
+		{
+			if (BombActive)
+			{
+				BombCommander heldBombCommander = GetHeldBomb();
+				if (heldBombCommander != null)
+				{
+					if (heldBombCommander.TimerComponent.IsUpdating)
+					{
+						if (!Leaderboardoff)
+						{
+							ChangeLeaderboard(true);
+							Debug.Log("[Command Line] Disabling leaderboard.");
+						}
+						heldBombCommander.TimerComponent.StopTimer();
+						Debug.Log("[Command Line] Paused the bomb timer.");
+					}
+					else
+					{
+						Log("The held bomb is already paused");
+					}
+				}
+				else
+				{
+					Log("Please hold the bomb that you wish to pause");
+				}
+			}
+			else
+			{
+				Log("Bomb not active, cannot pause a bomb");
+			}
+		}
+		else if (commandTrimmed == "unpause")
+		{
+			if (BombActive)
+			{
+				BombCommander heldBombCommander = GetHeldBomb();
+				if (heldBombCommander != null)
+				{
+					if (!heldBombCommander.TimerComponent.IsUpdating)
+					{
+						heldBombCommander.TimerComponent.StartTimer();
+						Debug.Log("[Command Line] Unpaused the bomb timer.");
+					}
+					else
+					{
+						Log("The held bomb is not paused");
+					}
+				}
+				else
+				{
+					Log("Please hold the bomb you wish to pause");
+				}
+			}
+			else
+			{
+				Log("Bomb not active, cannot unpause a bomb");
+			}
+		}
+		else if (part[0].Trim().ToLowerInvariant().EqualsAny("turn", "rotate", "flip"))
+		{
+			if (BombActive)
+			{
+				BombCommander heldBombCommander = GetHeldBomb();
+				if (heldBombCommander != null)
+				{
+					StartCoroutine(heldBombCommander.TurnBombCoroutine());
+				}
+				else
+				{
+					Log("Please hold the bomb you wish to turn");
+				}
+			}
+			else
+			{
+				Log("Bomb not active, cannot turn bomb");
 			}
 		}
 		else if (commandTrimmed == "help")
@@ -445,11 +542,14 @@ public class CommandLine : MonoBehaviour {
 			Log("Command reference:");
 			Log("\"Detonate [reason]\" - detonate the currently held bomb, with an optional reason");
 			Log("\"CauseStrike [reason]\" - cause a strike on the currently held bomb, with an optional reason");
-			Log("\"Time (set|add|subtract) (time)\" - changes the time on the currently held bomb (NOTE: this will disable leaderboards if you use it to achieve a faster time)");
+			Log("\"Time (set|add|subtract) (time)(s|m|h)\" - changes the time on the currently held bomb (NOTE: this will disable leaderboards if you use it to achieve a faster time)");
 			Log("\"Strikes (set|add|subtract) (number)\" - changes the strikes on the currently held bomb (NOTE: this will disable leaderboards if you use it to achieve a faster time)");
 			Log("\"StrikeLimit (set|add|subtract) (number)\" - changes the strike limit on the currently held bomb (NOTE: this will disable leaderboards if you add a higher strike limit)");
 			Log("\"Solve\" - solves the currently focused module (NOTE: this will disable leaderboards)");
 			Log("\"SolveBomb\" - solves the currently held bomb (NOTE: this will disable leaderboards)");
+			Log("\"Pause\" - pauses the timer on the currently held bomb (NOTE: this will disable leaderboards)");
+			Log("\"Unpause\" - unpauses the timer on the currently held bomb");
+			Log("\"Turn\" - turns the bomb to the opposite face");
 		}
 		else
 		{
@@ -467,7 +567,7 @@ public class CommandLine : MonoBehaviour {
 		}
 		return held;
 	}
-	
+
 	private Module GetFocusedModule()
 	{
 		Module focused = null;
@@ -522,16 +622,16 @@ public class CommandLine : MonoBehaviour {
 			case KMGameInfo.State.Setup:
 			case KMGameInfo.State.Quitting:
 			case KMGameInfo.State.PostGame:
+				Modules.Clear();
 				BombActive = false;
 				StopCoroutine(CheckForBomb());
 				Bombs.Clear();
-				Modules.Clear();
 				BombCommanders.Clear();
 				ChangeLeaderboard(false);
 				break;
 		}
 	}
-	
+
 	private IEnumerator CheckForBomb()
 	{
 		yield return new WaitUntil(() => (SceneManager.Instance.GameplayState.Bombs != null && SceneManager.Instance.GameplayState.Bombs.Count > 0));
@@ -586,5 +686,5 @@ public class CommandLine : MonoBehaviour {
 		}
 		BombActive = true;
 	}
-	
+
 }

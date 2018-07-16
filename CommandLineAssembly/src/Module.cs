@@ -33,7 +33,7 @@ namespace CommandLineAssembly
 		{
 			if (selectable != null)
 			{
-				if (KTInputManager.Instance?.SelectableManager?.GetCurrentParent().GetComponentInParent<BombComponent>() != null)
+				if (KTInputManager.Instance?.SelectableManager?.GetCurrentParent()?.GetComponentInParent<BombComponent>() != null)
 				{
 					if (KTInputManager.Instance.SelectableManager.GetCurrentParent().GetComponentInParent<BombComponent>() == BombComponent)
 						interacting = true;
