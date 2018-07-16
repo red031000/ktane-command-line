@@ -15,7 +15,7 @@ namespace CommandLineAssembly
 		public Selectable Selectable { get; private set; } = null;
 		public FloatingHoldable FloatingHoldable { get; private set; } = null;
 
-		private SelectableManager SelectableManager = null;
+		public SelectableManager SelectableManager { get; private set; } = null;
 		public float CurrentTimer
 		{
 			get => TimerComponent.TimeRemaining;
@@ -114,6 +114,7 @@ namespace CommandLineAssembly
 				Bomb.StrikeIndicator.StrikeCount = strikeCount;
 			}
 		}
+#if DEBUG
 		public IEnumerator TurnBombCoroutine()
 		{
 			float duration = FloatingHoldable.PickupTime;
@@ -151,5 +152,11 @@ namespace CommandLineAssembly
 			SelectableManager.SetControlsRotation(baseTransform.rotation * Quaternion.Euler(0.0f, 0.0f, targetZSpin));
 			SelectableManager.HandleFaceSelection();
 		}
+#else
+		public IEnumerator TurnBombCoroutine()
+		{
+			yield break;
+		}
+#endif
 	}
 }
