@@ -114,7 +114,6 @@ namespace CommandLineAssembly
 				Bomb.StrikeIndicator.StrikeCount = strikeCount;
 			}
 		}
-#if DEBUG
 		public IEnumerator TurnBombCoroutine()
 		{
 			float duration = FloatingHoldable.PickupTime;
@@ -141,22 +140,25 @@ namespace CommandLineAssembly
 				float currentZSpin = Mathf.SmoothStep(oldZSpin, targetZSpin, lerp);
 
 				Quaternion currentRotation = Quaternion.Euler(0.0f, 0.0f, currentZSpin);
+				Vector3 HeldObjectTiltEulerAngles = SelectableManager.GetHeldObjectTiltEulerAngles();
+				HeldObjectTiltEulerAngles.x = Mathf.Clamp(HeldObjectTiltEulerAngles.x, 0 - 95f, 95f);
+				HeldObjectTiltEulerAngles.z -= SelectableManager.GetZSpin() - currentZSpin;
 
 				SelectableManager.SetZSpin(currentZSpin);
 				SelectableManager.SetControlsRotation(baseTransform.rotation * currentRotation);
+				SelectableManager.SetHeldObjectTiltEulerAngles(HeldObjectTiltEulerAngles);
 				SelectableManager.HandleFaceSelection();
 				yield return null;
 			}
 
+			Vector3 HeldObjectTiltEulerAnglesFinal = SelectableManager.GetHeldObjectTiltEulerAngles();
+			HeldObjectTiltEulerAnglesFinal.x = Mathf.Clamp(HeldObjectTiltEulerAnglesFinal.x, 0 - 95f, 95f);
+			HeldObjectTiltEulerAnglesFinal.z -= SelectableManager.GetZSpin() - targetZSpin;
+
 			SelectableManager.SetZSpin(targetZSpin);
 			SelectableManager.SetControlsRotation(baseTransform.rotation * Quaternion.Euler(0.0f, 0.0f, targetZSpin));
+			SelectableManager.SetHeldObjectTiltEulerAngles(HeldObjectTiltEulerAnglesFinal);
 			SelectableManager.HandleFaceSelection();
 		}
-#else
-		public IEnumerator TurnBombCoroutine()
-		{
-			yield break;
-		}
-#endif
 	}
 }

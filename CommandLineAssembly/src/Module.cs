@@ -1,5 +1,4 @@
 ﻿using Assets.Scripts.Missions;
-using UnityEngine;
 
 namespace CommandLineAssembly
 {

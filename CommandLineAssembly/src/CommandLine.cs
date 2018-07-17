@@ -518,7 +518,7 @@ public class CommandLine : MonoBehaviour
 				Log("Bomb not active, cannot unpause a bomb");
 			}
 		}
-		else if (part[0].Trim().ToLowerInvariant().EqualsAny("turn", "rotate", "flip") && _isDebug)
+		else if (part[0].Trim().ToLowerInvariant().EqualsAny("turn", "rotate", "flip"))
 		{
 			if (BombActive)
 			{
@@ -549,9 +549,9 @@ public class CommandLine : MonoBehaviour
 			Log("\"SolveBomb\" - solves the currently held bomb (NOTE: this will disable leaderboards)");
 			Log("\"Pause\" - pauses the timer on the currently held bomb (NOTE: this will disable leaderboards)");
 			Log("\"Unpause\" - unpauses the timer on the currently held bomb");
+			Log("\"Turn\" - turns the bomb to the opposite face");
 			if (_isDebug)
 			{
-				Log("\"Turn\" - turns the bomb to the opposite face");
 				Log("\"CheckActive\" - returns debugging info about the current bomb");
 			}
 		}
