@@ -8,6 +8,8 @@ using System;
 using Assets.Scripts.Records;
 using Assets.Scripts.Stats;
 using Assets.Scripts.Missions;
+using System.Reflection;
+using Module = CommandLineAssembly.Module;
 
 public class CommandLine : MonoBehaviour
 {
@@ -22,6 +24,9 @@ public class CommandLine : MonoBehaviour
 	private bool _enabled = false;
 	private bool _wasAtBottom = true;
 	private bool BombActive = false;
+#pragma warning disable 414
+	private bool Infinite = false; //stored for debugging purposes
+#pragma warning restore 414
 #if DEBUG
 	public static readonly bool _isDebug = true;
 #else
@@ -116,6 +121,7 @@ public class CommandLine : MonoBehaviour
 	{
 		string commandTrimmed = command.Trim().ToLowerInvariant();
 		List<string> part = commandTrimmed.Split(new[] { ' ' }).ToList();
+		if (part == null || part.Count == 0) part.Add(commandTrimmed);
 
 		if (commandTrimmed == "exit")
 		{
@@ -141,6 +147,7 @@ public class CommandLine : MonoBehaviour
 				Log($"Currently held Bomb: {(heldBombCommander != null ? $"ID: {heldBombCommander.Id}" : "None")}");
 				Module focusedModule = GetFocusedModule();
 				Log($"Currently focused Module: {(focusedModule != null ? $"Name: {focusedModule.ModuleName}" : "None")}");
+				Log($"Infinite mode active: {Infinite}");
 			}
 		}
 		else if (part[0] == "detonate")
@@ -191,7 +198,7 @@ public class CommandLine : MonoBehaviour
 				Log("Bomb not active, cannot cause a strike");
 			}
 		}
-		else if (part[0].EqualsAny("time", "t") && part[1].EqualsAny("add", "increase", "change", "subtract", "decrease", "remove", "set"))
+		else if (part[0].EqualsAny("time", "t") && part.Count > 1 && part[1].EqualsAny("add", "increase", "change", "subtract", "decrease", "remove", "set"))
 		{
 			if (BombActive)
 			{
@@ -269,7 +276,7 @@ public class CommandLine : MonoBehaviour
 				Log("Bomb not active, cannot change time");
 			}
 		}
-		else if (part[0].EqualsAny("strikes", "strike", "s") && part[1].EqualsAny("add", "increase", "change", "subtract", "decrease", "remove", "set"))
+		else if (part[0].EqualsAny("strikes", "strike", "s") && part.Count > 1 && part[1].EqualsAny("add", "increase", "change", "subtract", "decrease", "remove", "set"))
 		{
 			if (BombActive)
 			{
@@ -325,7 +332,7 @@ public class CommandLine : MonoBehaviour
 				Log("Bomb not active, cannot change strikes");
 			}
 		}
-		else if (part[0].EqualsAny("ms", "maxstrikes", "sl", "strikelimit") && part[1].EqualsAny("add", "increase", "change", "subtract", "decrease", "remove", "set"))
+		else if (part[0].EqualsAny("ms", "maxstrikes", "sl", "strikelimit") && part.Count > 1 && part[1].EqualsAny("add", "increase", "change", "subtract", "decrease", "remove", "set"))
 		{
 			if (BombActive)
 			{
@@ -622,6 +629,7 @@ public class CommandLine : MonoBehaviour
 		{
 			case KMGameInfo.State.Gameplay:
 				StartCoroutine(CheckForBomb());
+				StartCoroutine(FactoryCheck());
 				break;
 			case KMGameInfo.State.Setup:
 			case KMGameInfo.State.Quitting:
@@ -629,6 +637,8 @@ public class CommandLine : MonoBehaviour
 				Modules.Clear();
 				BombActive = false;
 				StopCoroutine(CheckForBomb());
+				StopCoroutine(FactoryCheck());
+				StopCoroutine(WaitUntilEndFactory());
 				Bombs.Clear();
 				BombCommanders.Clear();
 				ChangeLeaderboard(false);
@@ -691,4 +701,84 @@ public class CommandLine : MonoBehaviour
 		BombActive = true;
 	}
 
+	#region Factory Implementation
+	private IEnumerator FactoryCheck()
+	{
+		yield return new WaitUntil(() => (SceneManager.Instance.GameplayState.Bombs != null && SceneManager.Instance.GameplayState.Bombs.Count > 0));
+		GameObject _gameObject = null;
+		for (var i = 0; i < 4 && _gameObject == null; i++)
+		{
+			_gameObject = GameObject.Find("Factory_Info");
+			yield return null;
+		}
+
+		if (_gameObject == null) yield break;
+
+		_factoryType = ReflectionHelper.FindType("FactoryAssembly.FactoryRoom");
+		if (_factoryType == null) yield break;
+
+		_factoryBombType = ReflectionHelper.FindType("FactoryAssembly.FactoryBomb");
+		_internalBombProperty = _factoryBombType.GetProperty("InternalBomb", BindingFlags.NonPublic | BindingFlags.Instance);
+
+		_factoryFiniteModeType = ReflectionHelper.FindType("FactoryAssembly.FiniteSequenceMode");
+		_factoryInfiniteModeType = ReflectionHelper.FindType("FactoryAssembly.InfiniteSequenceMode");
+		_currentBombField = _factoryFiniteModeType.GetField("_currentBomb", BindingFlags.NonPublic | BindingFlags.Instance);
+
+		_gameModeProperty = _factoryType.GetProperty("GameMode", BindingFlags.NonPublic | BindingFlags.Instance);
+
+		List<UnityEngine.Object> factoryObject = FindObjectsOfType(_factoryType).ToList();
+
+		if (factoryObject == null || factoryObject.Count == 0) yield break;
+
+		_factory = factoryObject;
+		_gameroom = _gameModeProperty.GetValue(_factory, new object[] { });
+		if (_gameroom.GetType() == _factoryInfiniteModeType)
+		{
+			Infinite = true;
+			StartCoroutine(WaitUntilEndFactory());
+		}
+	}
+
+	private UnityEngine.Object GetBomb => (UnityEngine.Object)_currentBombField.GetValue(_gameroom);
+
+	private IEnumerator WaitUntilEndFactory()
+	{
+		yield return new WaitUntil(() => GetBomb != null);
+
+		while (GetBomb != null)
+		{
+			UnityEngine.Object currentBomb = GetBomb;
+			Bomb bomb1 = (Bomb)_internalBombProperty.GetValue(currentBomb, null);
+			yield return new WaitUntil(() => bomb1.HasDetonated || bomb1.IsSolved());
+
+			Modules.Clear();
+			BombCommanders.Clear();
+			Bombs.Clear();
+
+			while (currentBomb == GetBomb)
+			{
+				yield return new WaitForSeconds(0.10f);
+				if (currentBomb != GetBomb)
+					continue;
+				yield return new WaitForSeconds(0.10f);
+			}
+
+			StartCoroutine(CheckForBomb());
+		}
+	}
+	//factory specific types
+
+	private static Type _factoryType = null;
+	private static Type _factoryBombType = null;
+	private static PropertyInfo _internalBombProperty;
+
+	private static Type _factoryFiniteModeType;
+	private static Type _factoryInfiniteModeType;
+
+	private static PropertyInfo _gameModeProperty;
+	private static FieldInfo _currentBombField;
+
+	private object _factory = null;
+	private object _gameroom = null;
+	#endregion
 }

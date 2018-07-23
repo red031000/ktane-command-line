@@ -59,6 +59,7 @@
     <Compile Include="src\ConvertedTypes.cs" />
     <Compile Include="src\GeneralExtensions.cs" />
     <Compile Include="src\Module.cs" />
+    <Compile Include="src\ReflectionHelper.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
