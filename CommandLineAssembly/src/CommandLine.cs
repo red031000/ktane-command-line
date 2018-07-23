@@ -22,70 +22,13 @@ public class CommandLine : MonoBehaviour
 	private bool _enabled = false;
 	private bool _wasAtBottom = true;
 	private bool BombActive = false;
-	private static string[] keyModules =
-		{
-			"SouvenirModule", "MemoryV2", "TurnTheKey", "TurnTheKeyAdvanced", "theSwan", "HexiEvilFMN", "taxReturns"
-		};
 #if DEBUG
 	public static readonly bool _isDebug = true;
 #else
 	public static readonly bool _isDebug = false;
 #endif
-	private List<Bomb> _bombs = new List<Bomb> { };
-	private List<Bomb> Bombs
-	{
-		get { return _bombs; }
-		set
-		{
-			_bombs = value;
-			int i = 0;
-			BombCommanders.Clear();
-			Modules.Clear();
-			foreach (Bomb bomb in value)
-			{
-				BombCommanders.Add(new BombCommander(bomb, i));
-				foreach (BombComponent bombComponent in bomb.BombComponents)
-				{
-					ComponentTypeEnum componentType = bombComponent.ComponentType;
-					bool keyModule = false;
-					string moduleName = "";
 
-					switch (componentType)
-					{
-						case ComponentTypeEnum.Empty:
-						case ComponentTypeEnum.Timer:
-							continue;
-
-						case ComponentTypeEnum.NeedyCapacitor:
-						case ComponentTypeEnum.NeedyKnob:
-						case ComponentTypeEnum.NeedyVentGas:
-						case ComponentTypeEnum.NeedyMod:
-							moduleName = bombComponent.GetModuleDisplayName();
-							keyModule = true;
-							break;
-
-						case ComponentTypeEnum.Mod:
-							KMBombModule KMModule = bombComponent.GetComponent<KMBombModule>();
-							keyModule = keyModules.Contains(KMModule.ModuleType);
-							goto default;
-
-						default:
-							moduleName = bombComponent.GetModuleDisplayName();
-							break;
-					}
-					Module module = new Module(bombComponent, i)
-					{
-						ComponentType = componentType,
-						IsKeyModule = keyModule,
-						ModuleName = moduleName
-					};
-
-					Modules.Add(module);
-				}
-				i++;
-			}
-		}
-	}
+	private List<Bomb> Bombs = new List<Bomb> { };
 	private List<BombCommander> BombCommanders = new List<BombCommander> { };
 	private List<Module> Modules = new List<Module> { };
 	private static bool Leaderboardoff = false;
@@ -686,6 +629,7 @@ public class CommandLine : MonoBehaviour
 				Modules.Clear();
 				BombActive = false;
 				StopCoroutine(CheckForBomb());
+				Bombs.Clear();
 				BombCommanders.Clear();
 				ChangeLeaderboard(false);
 				break;
@@ -695,8 +639,55 @@ public class CommandLine : MonoBehaviour
 	private IEnumerator CheckForBomb()
 	{
 		yield return new WaitUntil(() => (SceneManager.Instance.GameplayState.Bombs != null && SceneManager.Instance.GameplayState.Bombs.Count > 0));
-		Bombs = SceneManager.Instance.GameplayState.Bombs;
+		Bombs.AddRange(SceneManager.Instance.GameplayState.Bombs);
+		int i = 0;
+		string[] keyModules =
+		{
+			"SouvenirModule", "MemoryV2", "TurnTheKey", "TurnTheKeyAdvanced", "theSwan", "HexiEvilFMN", "taxReturns"
+		};
+		foreach (Bomb bomb in Bombs)
+		{
+			BombCommanders.Add(new BombCommander(bomb, i));
+			foreach (BombComponent bombComponent in bomb.BombComponents)
+			{
+				ComponentTypeEnum componentType = bombComponent.ComponentType;
+				bool keyModule = false;
+				string moduleName = "";
 
+				switch (componentType)
+				{
+					case ComponentTypeEnum.Empty:
+					case ComponentTypeEnum.Timer:
+						continue;
+
+					case ComponentTypeEnum.NeedyCapacitor:
+					case ComponentTypeEnum.NeedyKnob:
+					case ComponentTypeEnum.NeedyVentGas:
+					case ComponentTypeEnum.NeedyMod:
+						moduleName = bombComponent.GetModuleDisplayName();
+						keyModule = true;
+						break;
+
+					case ComponentTypeEnum.Mod:
+						KMBombModule KMModule = bombComponent.GetComponent<KMBombModule>();
+						keyModule = keyModules.Contains(KMModule.ModuleType);
+						goto default;
+
+					default:
+						moduleName = bombComponent.GetModuleDisplayName();
+						break;
+				}
+				Module module = new Module(bombComponent, i)
+				{
+					ComponentType = componentType,
+					IsKeyModule = keyModule,
+					ModuleName = moduleName
+				};
+
+				Modules.Add(module);
+			}
+			i++;
+		}
 		BombActive = true;
 	}
 
