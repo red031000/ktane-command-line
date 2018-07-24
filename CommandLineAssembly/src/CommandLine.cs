@@ -649,7 +649,11 @@ public class CommandLine : MonoBehaviour
 	private IEnumerator CheckForBomb()
 	{
 		yield return new WaitUntil(() => (SceneManager.Instance.GameplayState.Bombs != null && SceneManager.Instance.GameplayState.Bombs.Count > 0));
-		Bombs.AddRange(SceneManager.Instance.GameplayState.Bombs);
+		while (SceneManager.Instance.GameplayState.Bombs != Bombs)
+		{
+			Bombs.AddRange(SceneManager.Instance.GameplayState.Bombs);
+			yield return new WaitForSeconds(0.1f);
+		}
 		int i = 0;
 		string[] keyModules =
 		{
@@ -720,6 +724,7 @@ public class CommandLine : MonoBehaviour
 		_factoryBombType = ReflectionHelper.FindType("FactoryAssembly.FactoryBomb");
 		_internalBombProperty = _factoryBombType.GetProperty("InternalBomb", BindingFlags.NonPublic | BindingFlags.Instance);
 
+		_factoryStaticModeType = ReflectionHelper.FindType("FactoryAssembly.StaticMode");
 		_factoryFiniteModeType = ReflectionHelper.FindType("FactoryAssembly.FiniteSequenceMode");
 		_factoryInfiniteModeType = ReflectionHelper.FindType("FactoryAssembly.InfiniteSequenceMode");
 		_currentBombField = _factoryFiniteModeType.GetField("_currentBomb", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -730,7 +735,7 @@ public class CommandLine : MonoBehaviour
 
 		if (factoryObject == null || factoryObject.Count == 0) yield break;
 
-		_factory = factoryObject;
+		_factory = factoryObject[0];
 		_gameroom = _gameModeProperty.GetValue(_factory, new object[] { });
 		if (_gameroom.GetType() == _factoryInfiniteModeType)
 		{
@@ -770,13 +775,14 @@ public class CommandLine : MonoBehaviour
 
 	private static Type _factoryType = null;
 	private static Type _factoryBombType = null;
-	private static PropertyInfo _internalBombProperty;
+	private static PropertyInfo _internalBombProperty = null;
 
-	private static Type _factoryFiniteModeType;
-	private static Type _factoryInfiniteModeType;
+	private static Type _factoryStaticModeType = null;
+	private static Type _factoryFiniteModeType = null;
+	private static Type _factoryInfiniteModeType = null;
 
-	private static PropertyInfo _gameModeProperty;
-	private static FieldInfo _currentBombField;
+	private static PropertyInfo _gameModeProperty = null;
+	private static FieldInfo _currentBombField = null;
 
 	private object _factory = null;
 	private object _gameroom = null;
