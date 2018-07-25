@@ -649,11 +649,8 @@ public class CommandLine : MonoBehaviour
 	private IEnumerator CheckForBomb()
 	{
 		yield return new WaitUntil(() => (SceneManager.Instance.GameplayState.Bombs != null && SceneManager.Instance.GameplayState.Bombs.Count > 0));
-		while (SceneManager.Instance.GameplayState.Bombs != Bombs)
-		{
-			Bombs.AddRange(SceneManager.Instance.GameplayState.Bombs);
-			yield return new WaitForSeconds(0.1f);
-		}
+		yield return new WaitForSeconds(2.0f);
+		Bombs.AddRange(SceneManager.Instance.GameplayState.Bombs);
 		int i = 0;
 		string[] keyModules =
 		{
