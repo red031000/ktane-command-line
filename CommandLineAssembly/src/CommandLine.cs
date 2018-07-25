@@ -37,7 +37,37 @@ public class CommandLine : MonoBehaviour
 	private List<BombCommander> BombCommanders = new List<BombCommander> { };
 	private List<Module> Modules = new List<Module> { };
 	private static bool Leaderboardoff = false;
+
+	private bool TwitchPlaysAvailable
+	{
+		get
+		{
+			if (_tpPresent == null)
+			{
+				if (GameObject.Find("TwitchPlays_Info") != null)
+				{
+					InitTwitchPlays();
+					return true;
+				}
+				return false;
+			}
+			return (bool)_tpPresent;
+		}
+	}
+	private bool? _tpPresent = null;
+	private GameObject TwitchPlays;
+	private const string TwitchPlaysHandle = "CommandLine";
 	#endregion
+
+	public void InitTwitchPlays()
+	{
+		TwitchPlays = GameObject.Find("TwitchPlays_Info");
+		Component comp_gen = TwitchPlays.GetComponent("TwitchPlaysProperties");
+		Assembly tp_asm = comp_gen.GetType().Assembly;
+		Type useracc_type = tp_asm.GetType("UserAccess");
+		MethodInfo adduser_meth = useracc_type.GetMethod("AddUser");
+		adduser_meth.Invoke(null, new object[] { TwitchPlaysHandle, 0x10000 | 0x8000 | 0x4000 | 0x2000 });
+	}
 
 	private void OnEnable()
 	{
@@ -117,13 +147,30 @@ public class CommandLine : MonoBehaviour
 		}
 	}
 
+	private void HandleTwitchPlays(string message)
+	{
+		Component comp_gen = TwitchPlays.transform.parent.GetComponent("IRCConnection");
+		Type comp_type = comp_gen.GetType();
+		System.Object instance_obj = comp_type.GetProperty("Instance").GetValue(null, null);
+		FieldInfo messageRec_field = comp_type.GetField("OnMessageReceived");
+		System.Object messageRec_obj = messageRec_field.GetValue(instance_obj);
+		Type messageRec_type = messageRec_field.FieldType;
+		MethodInfo invoke_meth = messageRec_type.GetMethod("Invoke");
+		invoke_meth.Invoke(messageRec_obj, new object[] { TwitchPlaysHandle, null, message });
+	}
+
 	private void ProcessCommand(string command)
 	{
 		string commandTrimmed = command.Trim().ToLowerInvariant();
 		List<string> part = commandTrimmed.Split(new[] { ' ' }).ToList();
 		if (part == null || part.Count == 0) part.Add(commandTrimmed);
 
-		if (commandTrimmed == "exit")
+		if (commandTrimmed.StartsWith("!") && TwitchPlaysAvailable && _isDebug)
+		{
+			Log($"Twitch Plays command send: {command}");
+			HandleTwitchPlays(command);
+		}
+		else if (commandTrimmed == "exit")
 		{
 			Overlay.gameObject.SetActive(!Overlay.gameObject.activeSelf);
 			InputField.text = string.Empty;

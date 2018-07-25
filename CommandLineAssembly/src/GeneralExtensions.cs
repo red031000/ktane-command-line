@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 public static class GeneralExtensions
 {
@@ -39,4 +37,3 @@ public static class GeneralExtensions
 		return formatedTime;
 	}
 }
-
