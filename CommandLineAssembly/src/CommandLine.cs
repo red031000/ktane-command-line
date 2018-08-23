@@ -10,6 +10,7 @@ using Assets.Scripts.Stats;
 using Assets.Scripts.Missions;
 using System.Reflection;
 using Module = CommandLineAssembly.Module;
+using Assets.Scripts.Services;
 
 public class CommandLine : MonoBehaviour
 {
@@ -151,9 +152,9 @@ public class CommandLine : MonoBehaviour
 	{
 		Component comp_gen = TwitchPlays.transform.parent.GetComponent("IRCConnection");
 		Type comp_type = comp_gen.GetType();
-		System.Object instance_obj = comp_type.GetProperty("Instance").GetValue(null, null);
+		object instance_obj = comp_type.GetProperty("Instance").GetValue(null, null);
 		FieldInfo messageRec_field = comp_type.GetField("OnMessageReceived");
-		System.Object messageRec_obj = messageRec_field.GetValue(instance_obj);
+		object messageRec_obj = messageRec_field.GetValue(instance_obj);
 		Type messageRec_type = messageRec_field.FieldType;
 		MethodInfo invoke_meth = messageRec_type.GetMethod("Invoke");
 		invoke_meth.Invoke(messageRec_obj, new object[] { TwitchPlaysHandle, null, message });
@@ -645,6 +646,9 @@ public class CommandLine : MonoBehaviour
 		if (StatsManager.Instance != null)
 			StatsManager.Instance.DisableStatChanges = off;
 
+		if (AbstractServices.Instance != null)
+			AbstractServices.Instance.LeaderboardMediator.DisableLeaderboardRequests = off;
+
 		Leaderboardoff = off;
 	}
 
@@ -695,7 +699,7 @@ public class CommandLine : MonoBehaviour
 
 	private IEnumerator CheckForBomb()
 	{
-		yield return new WaitUntil(() => (SceneManager.Instance.GameplayState.Bombs != null && SceneManager.Instance.GameplayState.Bombs.Count > 0));
+		yield return new WaitUntil(() => SceneManager.Instance.GameplayState.Bombs != null && SceneManager.Instance.GameplayState.Bombs.Count > 0);
 		yield return new WaitForSeconds(2.0f);
 		Bombs.AddRange(SceneManager.Instance.GameplayState.Bombs);
 		int i = 0;
@@ -752,7 +756,7 @@ public class CommandLine : MonoBehaviour
 	#region Factory Implementation
 	private IEnumerator FactoryCheck()
 	{
-		yield return new WaitUntil(() => (SceneManager.Instance.GameplayState.Bombs != null && SceneManager.Instance.GameplayState.Bombs.Count > 0));
+		yield return new WaitUntil(() => SceneManager.Instance.GameplayState.Bombs != null && SceneManager.Instance.GameplayState.Bombs.Count > 0);
 		GameObject _gameObject = null;
 		for (var i = 0; i < 4 && _gameObject == null; i++)
 		{
