@@ -661,7 +661,6 @@ public class CommandLine : MonoBehaviour
 		}
 		try
 		{
-			KMBombModule KMmodule = module.BombComponent.GetComponent<KMBombModule>();
 			CommonReflectedTypeInfo.HandlePassMethod.Invoke(module.BombComponent, null);
 			foreach (MonoBehaviour behavior in module.BombComponent.GetComponentsInChildren<MonoBehaviour>(true))
 			{
@@ -679,6 +678,7 @@ public class CommandLine : MonoBehaviour
 		switch (state)
 		{
 			case KMGameInfo.State.Gameplay:
+				ChangeLeaderboard(false);
 				StartCoroutine(CheckForBomb());
 				StartCoroutine(FactoryCheck());
 				break;
@@ -692,7 +692,6 @@ public class CommandLine : MonoBehaviour
 				StopCoroutine(WaitUntilEndFactory());
 				Bombs.Clear();
 				BombCommanders.Clear();
-				ChangeLeaderboard(false);
 				break;
 		}
 	}
@@ -714,7 +713,7 @@ public class CommandLine : MonoBehaviour
 			{
 				ComponentTypeEnum componentType = bombComponent.ComponentType;
 				bool keyModule = false;
-				string moduleName = "";
+				string moduleName = string.Empty;
 
 				switch (componentType)
 				{
