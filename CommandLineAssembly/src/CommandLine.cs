@@ -136,9 +136,8 @@ public class CommandLine : MonoBehaviour
 
 	private void Log(string text)
 	{
-		Text newText = Instantiate(TextPrefab);
+		Text newText = Instantiate(TextPrefab, Content.transform, false);
 		newText.text = text;
-		newText.transform.SetParent(Content.transform, false);
 
 		if (_wasAtBottom)
 		{
