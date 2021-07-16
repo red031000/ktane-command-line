@@ -658,6 +658,46 @@ public class CommandLine : MonoBehaviour
             ChangeLeaderboard(true);
             Debug.Log("[Command Line] Disabling leaderboard.");
         }
+        Debug.LogFormat("[Command Line] Solving module: {0}", module.ModuleName);
+        try
+        {
+            const BindingFlags Flags = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy;
+            bool FoundSolveMethod = false;
+            foreach(MonoBehaviour mb in module.BombComponent.GetComponentsInChildren<MonoBehaviour>())
+            {
+                MethodInfo method = mb.GetType().GetMethod("TwitchHandleForcedSolve", Flags);
+                if(method == null) continue;
+                if(method.ReturnType == typeof(void)) try { method.Invoke(mb, null); FoundSolveMethod = true; } catch { continue; }
+                if(method.ReturnType == typeof(IEnumerator))
+                {
+                    try
+                    {
+                        IEnumerator e = (IEnumerator)method.Invoke(mb, null);
+                        SolveMethods.Enqueue(e);
+                        SolveMethodsModules.Enqueue(module);
+                        if(!IsSolving)
+                            IsSolving = true;
+                        FoundSolveMethod = true;
+                    }
+                    catch { }
+                }
+            }
+            if(IsSolving && !IsCoroutineStarted)
+            {
+                StartCoroutine(SolveBomb());
+                IsSolving = false;
+            }
+            if(!FoundSolveMethod)
+                throw new Exception();
+        }
+        catch
+        {
+            OldSolveModule(module);
+        }
+    }
+
+    private void OldSolveModule(Module module)
+    {
         try
         {
             CommonReflectedTypeInfo.HandlePassMethod.Invoke(module.BombComponent, null);
@@ -670,6 +710,85 @@ public class CommandLine : MonoBehaviour
         {
             Log($"Exception while force solving module: {ex}");
         }
+    }
+
+    private Queue<IEnumerator> SolveMethods = new Queue<IEnumerator>();
+    private Queue<Module> SolveMethodsModules = new Queue<Module>();
+    private bool IsSolving = false;
+    private bool IsCoroutineStarted = false;
+
+    private IEnumerator SolveBomb()
+    {
+        IsCoroutineStarted = true;
+        Debug.Log("[Command Line] Starting solve coroutine.");
+        while(SolveMethods.Count > 0)
+        {
+            if(SolveMethods.Peek().Current is true)
+            {
+                SolveMethods.Enqueue(SolveMethods.Dequeue());
+                SolveMethodsModules.Enqueue(SolveMethodsModules.Dequeue());
+                yield return null;
+            }
+            else if(SolveMethods.Peek().Current is KMSelectable)
+            {
+                try
+                {
+                    ((KMSelectable)SolveMethods.Peek().Current).OnInteract();
+                }
+                catch
+                {
+                    SolveMethods.Dequeue();
+                    OldSolveModule(SolveMethodsModules.Dequeue());
+                }
+                yield return null;
+            }
+            /*
+            else if(SolveMethods.Peek().Current is IEnumerable<KMSelectable>)
+            {
+                foreach(KMSelectable item in SolveMethods.Peek().Current as IEnumerable<KMSelectable>)
+                {
+                    try
+                    {
+                        item.OnInteract();
+                    }
+                    catch
+                    {
+                        SolveMethods.Dequeue();
+                        try
+                        {
+                            CommonReflectedTypeInfo.HandlePassMethod.Invoke(SolveMethodsModules.Peek().BombComponent, null);
+                            foreach(MonoBehaviour behavior in SolveMethodsModules.Peek().BombComponent.GetComponentsInChildren<MonoBehaviour>(true))
+                            {
+                                behavior.StopAllCoroutines();
+                            }
+                        }
+                        catch(Exception ex)
+                        {
+                            Log($"Exception while force solving module: {ex}");
+                        }
+                        SolveMethodsModules.Dequeue();
+                    }
+                    yield return null;
+                }
+            }
+            */
+            else
+                yield return SolveMethods.Peek().Current;
+            try
+            {
+                if(!SolveMethods.Peek().MoveNext())
+                {
+                    SolveMethods.Dequeue();
+                    SolveMethodsModules.Dequeue();
+                }
+            }
+            catch
+            {
+                SolveMethods.Dequeue();
+                OldSolveModule(SolveMethodsModules.Dequeue());
+            }
+        }
+        IsCoroutineStarted = false;
     }
 
     private void StateChange(KMGameInfo.State state)
