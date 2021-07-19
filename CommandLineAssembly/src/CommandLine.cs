@@ -498,6 +498,8 @@ public class CommandLine : MonoBehaviour
                         ChangeLeaderboard(true);
                         Debug.Log("[Command Line] Disabling leaderboard.");
                     }
+                    SolveMethods = new Queue<IEnumerator>();
+                    SolveMethodsModules = new Queue<Module>();
                     foreach(Module module in Modules.Where(x => x.BombId == heldBombCommander.Id && x.IsSolvable && x.ComponentType != ComponentTypeEnum.Empty && x.ComponentType != ComponentTypeEnum.Timer))
                     {
                         if(!module.IsSolved) SolveModule(module);
