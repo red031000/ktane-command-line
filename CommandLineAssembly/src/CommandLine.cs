@@ -781,6 +781,8 @@ public class CommandLine : MonoBehaviour
                 if(!SolveMethods.Peek().MoveNext())
                 {
                     SolveMethods.Dequeue();
+                    if(!SolveMethodsModules.Peek().IsSolved)
+                        OldSolveModule(SolveMethodsModules.Peek());
                     SolveMethodsModules.Dequeue();
                 }
             }
