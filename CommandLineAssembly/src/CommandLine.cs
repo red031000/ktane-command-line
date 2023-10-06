@@ -14,7 +14,6 @@ using Assets.Scripts.Services;
 
 public class CommandLine : MonoBehaviour
 {
-
     #region Global Variables
     public Text TextPrefab = null;
     public InputField InputField = null;
@@ -445,11 +444,19 @@ public class CommandLine : MonoBehaviour
                         {
                             switch(module.ComponentType)
                             {
+                                case ComponentTypeEnum.NeedyMod:
+                                    if(!SolveModule(module))
+                                        Log("This needy module cannot be solved");
+                                    else
+                                    {
+                                        Log($"Solving module: {module.ModuleName}");
+                                        Debug.Log($"[Command Line] Solved needy module: {module.ModuleName}");
+                                    }
+                                    break;
                                 case ComponentTypeEnum.NeedyCapacitor:
                                 case ComponentTypeEnum.NeedyKnob:
-                                case ComponentTypeEnum.NeedyMod:
                                 case ComponentTypeEnum.NeedyVentGas:
-                                    Log("You cannot solve a needy module");
+                                    Log("You cannot solve a vanilla needy module");
                                     break;
 
                                 case ComponentTypeEnum.Empty:
@@ -653,7 +660,7 @@ public class CommandLine : MonoBehaviour
         Leaderboardoff = off;
     }
 
-    private void SolveModule(Module module)
+    private bool SolveModule(Module module)
     {
         if(!Leaderboardoff)
         {
@@ -691,10 +698,14 @@ public class CommandLine : MonoBehaviour
             }
             if(!FoundSolveMethod)
                 throw new Exception();
+            return true;
         }
         catch
         {
+            if (module.ComponentType == ComponentTypeEnum.NeedyMod)
+                return false;
             OldSolveModule(module);
+            return false;
         }
     }
 
@@ -797,6 +808,8 @@ public class CommandLine : MonoBehaviour
 
     private void StateChange(KMGameInfo.State state)
     {
+        SolveMethods.Clear();
+        SolveMethodsModules.Clear();
         switch(state)
         {
             case KMGameInfo.State.Gameplay:
